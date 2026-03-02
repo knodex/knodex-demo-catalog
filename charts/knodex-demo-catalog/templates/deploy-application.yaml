@@ -1,0 +1,90 @@
+{{- if .Values.deployApplication.enabled }}
+# Deploy Application via ArgoCD
+# Deploys an application to a target cluster using ArgoCD GitOps
+# Target: Developers, Platform Engineers
+---
+apiVersion: kro.run/v1alpha1
+kind: ResourceGraphDefinition
+metadata:
+  name: {{ .Values.deployApplication.rgdName | default "deploy-application" }}
+  labels:
+    {{- include "knodex-demo-catalog.labels" . | nindent 4 }}
+  annotations:
+    kro.run/allow-breaking-changes: "true"
+    knodex.io/catalog: "true"
+    knodex.io/title: "Deploy Application"
+    knodex.io/description: "Deploy an application to a target cluster via ArgoCD GitOps"
+    knodex.io/tags: "application,argocd,gitops,deployment"
+    knodex.io/category: "application"
+    knodex.io/version: "1.0.0"
+spec:
+  schema:
+    apiVersion: v1alpha1
+    kind: ApplicationDeployment
+    spec:
+      # === REQUIRED INPUTS ===
+      # appName must be a valid DNS subdomain (lowercase alphanumeric, hyphens)
+      appName: string
+      repoURL: string
+      path: string | default="."
+      targetRevision: string | default="HEAD"
+
+      # === EXTERNAL REFERENCES ===
+      externalRef:
+        targetCluster:
+          name: string | default=""
+          namespace: string | default=""
+
+      # === ADVANCED CONFIGURATION (hidden by default in UI) ===
+      advanced:
+        argocdNamespace: string | default="argocd"
+        syncPolicy:
+          selfHeal: boolean | default=true
+          prune: boolean | default=true
+        project: string | default="default"
+        destinationNamespace: string | default="default"
+        # Override auto-derived server URL (CAPD pattern: https://<cluster-name>-lb:6443)
+        destinationServer: string | default=""
+
+    # === STATUS OUTPUTS ===
+    status:
+      applicationName: ${argoApp.metadata.name}
+      syncStatus: ${argoApp.status.?sync.?status.orValue("Unknown")}
+      healthStatus: ${argoApp.status.?health.?status.orValue("Unknown")}
+
+  # === RESOURCES ===
+  resources:
+    # External reference to ArgoCD cluster registration (ensures cluster is registered before deploying)
+    - id: targetCluster
+      externalRef:
+        apiVersion: kro.run/v1alpha1
+        kind: ArgocdClusterRegistration
+        metadata:
+          name: ${schema.spec.externalRef.targetCluster.name}
+          namespace: ${schema.spec.externalRef.targetCluster.namespace}
+
+    # ArgoCD Application resource
+    - id: argoApp
+      readyWhen:
+        - ${argoApp.status.?health.?status.orValue("") == "Healthy"}
+        - ${argoApp.status.?sync.?status.orValue("") == "Synced"}
+      template:
+        apiVersion: argoproj.io/v1alpha1
+        kind: Application
+        metadata:
+          name: ${schema.spec.appName}
+          namespace: ${schema.spec.advanced.argocdNamespace}
+        spec:
+          project: ${schema.spec.advanced.project}
+          source:
+            repoURL: ${schema.spec.repoURL}
+            path: ${schema.spec.path}
+            targetRevision: ${schema.spec.targetRevision}
+          destination:
+            server: https://${schema.spec.externalRef.targetCluster.name}-lb:6443
+            namespace: ${schema.spec.advanced.destinationNamespace}
+          syncPolicy:
+            automated:
+              selfHeal: ${schema.spec.advanced.syncPolicy.selfHeal}
+              prune: ${schema.spec.advanced.syncPolicy.prune}
+{{- end }}

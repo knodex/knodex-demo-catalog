@@ -1,0 +1,40 @@
+apiVersion: v2
+name: knodex-demo-catalog
+description: |
+  Demo catalog of Kro Resource Graph Definitions for Kind-based clusters.
+  Provides RGD patterns for demonstration and testing.
+
+type: application
+
+version: 0.1.0
+appVersion: "0.1.0"
+
+keywords:
+  - kro
+  - rgd
+  - kubernetes
+  - infrastructure
+  - demo
+  - kind
+
+home: https://github.com/knodex/knodex-demo-catalog
+
+sources:
+  - https://github.com/knodex/knodex-demo-catalog
+
+maintainers:
+  - name: knodex
+    email: tparis@provops.com
+
+kubeVersion: ">=1.30.0"
+
+annotations:
+  knodex.io/kro-version: ">=0.7.0"
+  category: infrastructure
+  artifacthub.io/license: Apache-2.0
+
+dependencies:
+  - name: kro
+    version: "0.8.5"
+    repository: "oci://registry.k8s.io/kro/charts"
+    condition: kro.enabled

@@ -1,0 +1,25 @@
+# Helm
+charts/*/charts/
+*.tgz
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Environment
+.env
+
+# BMAD scaffolding
+_bmad/
+_bmad-output/
+
+# CLI/IDE config
+.claude/
+.cursor/
+.windsurf/

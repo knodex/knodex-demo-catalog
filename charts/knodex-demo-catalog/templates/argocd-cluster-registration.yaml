@@ -1,0 +1,41 @@
+{{- if .Values.argocdClusterRegister.enabled }}
+# RBAC for the ArgoCD cluster registration Job
+# Allows the Job to read CAPI kubeconfig secrets and create ArgoCD cluster secrets
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: argocd-cluster-registrar
+  namespace: default
+  labels:
+    {{- include "knodex-demo-catalog.labels" . | nindent 4 }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: argocd-cluster-registrar
+  labels:
+    {{- include "knodex-demo-catalog.labels" . | nindent 4 }}
+rules:
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["get", "list", "create", "update", "patch"]
+  - apiGroups: ["cluster.x-k8s.io"]
+    resources: ["clusters"]
+    verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: argocd-cluster-registrar
+  labels:
+    {{- include "knodex-demo-catalog.labels" . | nindent 4 }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: argocd-cluster-registrar
+subjects:
+  - kind: ServiceAccount
+    name: argocd-cluster-registrar
+    namespace: default
+{{- end }}
