@@ -34,3 +34,13 @@ annotations:
   knodex.io/kro-version: ">=0.7.0"
   category: infrastructure
   artifacthub.io/license: Apache-2.0
+
+dependencies:
+  - name: azure-service-operator
+    version: "2.18.0"
+    repository: "https://raw.githubusercontent.com/Azure/azure-service-operator/main/v2/charts"
+    condition: azure-service-operator.enabled
+  - name: kro
+    version: "0.8.5"
+    repository: "oci://registry.k8s.io/kro/charts"
+    condition: kro.enabled

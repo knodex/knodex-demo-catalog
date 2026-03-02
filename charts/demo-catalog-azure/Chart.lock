@@ -1,0 +1,9 @@
+dependencies:
+- name: azure-service-operator
+  repository: https://raw.githubusercontent.com/Azure/azure-service-operator/main/v2/charts
+  version: 2.18.0
+- name: kro
+  repository: oci://registry.k8s.io/kro/charts
+  version: 0.8.5
+digest: sha256:01862715af788e316e2c64dbc0937c81140b3b7e979cc5a23f20902944363115
+generated: "2026-03-02T11:17:57.786424-05:00"

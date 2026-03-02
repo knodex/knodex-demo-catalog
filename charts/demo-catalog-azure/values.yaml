@@ -3,3 +3,12 @@
 
 nameOverride: ""
 fullnameOverride: ""
+
+# --- Dependencies ---
+# Enable to install Azure Service Operator alongside the RGDs
+azure-service-operator:
+  enabled: false
+
+# Enable to install Kro alongside the RGDs
+kro:
+  enabled: false
