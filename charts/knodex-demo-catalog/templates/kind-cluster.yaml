@@ -1,0 +1,176 @@
+{{- if .Values.kindCluster.enabled }}
+# Kind Cluster via Cluster API (CAPD)
+# Provisions a local Kind workload cluster using Cluster API Docker provider
+# Target: Developers, Platform Engineers
+---
+apiVersion: kro.run/v1alpha1
+kind: ResourceGraphDefinition
+metadata:
+  name: {{ .Values.kindCluster.rgdName | default "kind-cluster" }}
+  labels:
+    {{- include "knodex-demo-catalog.labels" . | nindent 4 }}
+  annotations:
+    kro.run/allow-breaking-changes: "true"
+    knodex.io/catalog: "true"
+    knodex.io/title: "Kind Cluster"
+    knodex.io/description: "Provision a local Kind workload cluster via Cluster API (CAPD)"
+    knodex.io/tags: "cluster,kind,capi,local,development"
+    knodex.io/category: "compute"
+    knodex.io/version: "1.0.0"
+spec:
+  schema:
+    apiVersion: v1alpha1
+    kind: KindCluster
+    spec:
+      # === REQUIRED INPUTS ===
+      clusterName: string
+      kubernetesVersion: string | default="v1.31.0"
+      workerCount: integer | default=1
+
+      # === ADVANCED CONFIGURATION (hidden by default in UI) ===
+      advanced:
+        controlPlaneReplicas: integer | default=1
+        podCidr: string | default="192.168.0.0/16"
+        serviceCidr: string | default="10.128.0.0/12"
+
+    # === STATUS OUTPUTS ===
+    status:
+      clusterName: ${cluster.metadata.name}
+      clusterStatus: ${cluster.status.?phase.orValue("Provisioning")}
+      kubeconfigSecretName: ${cluster.metadata.name}-kubeconfig
+
+  # === RESOURCES ===
+  resources:
+    # Cluster API Cluster resource
+    - id: cluster
+      template:
+        apiVersion: cluster.x-k8s.io/v1beta1
+        kind: Cluster
+        metadata:
+          name: ${schema.spec.clusterName}
+          labels:
+            cni: kindnet
+        spec:
+          clusterNetwork:
+            pods:
+              cidrBlocks:
+                - ${schema.spec.advanced.podCidr}
+            services:
+              cidrBlocks:
+                - ${schema.spec.advanced.serviceCidr}
+          controlPlaneRef:
+            apiVersion: controlplane.cluster.x-k8s.io/v1beta1
+            kind: KubeadmControlPlane
+            name: ${schema.spec.clusterName}-control-plane
+          infrastructureRef:
+            apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
+            kind: DockerCluster
+            name: ${schema.spec.clusterName}
+
+    # Docker infrastructure cluster (auto-managed by CAPD)
+    - id: dockerCluster
+      template:
+        apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
+        kind: DockerCluster
+        metadata:
+          name: ${schema.spec.clusterName}
+
+    # Control Plane DockerMachineTemplate
+    - id: controlPlaneMachineTemplate
+      template:
+        apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
+        kind: DockerMachineTemplate
+        metadata:
+          name: ${schema.spec.clusterName}-control-plane
+        spec:
+          template:
+            spec:
+              extraMounts:
+                - containerPath: /var/run/docker.sock
+                  hostPath: /var/run/docker.sock
+
+    # KubeadmControlPlane
+    - id: controlPlane
+      template:
+        apiVersion: controlplane.cluster.x-k8s.io/v1beta1
+        kind: KubeadmControlPlane
+        metadata:
+          name: ${schema.spec.clusterName}-control-plane
+        spec:
+          replicas: ${schema.spec.advanced.controlPlaneReplicas}
+          version: ${schema.spec.kubernetesVersion}
+          machineTemplate:
+            infrastructureRef:
+              apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
+              kind: DockerMachineTemplate
+              name: ${schema.spec.clusterName}-control-plane
+          kubeadmConfigSpec:
+            initConfiguration:
+              nodeRegistration:
+                kubeletExtraArgs:
+                  eviction-hard: nodefs.available<0%,nodefs.inodesFree<0%,imagefs.available<0%
+            joinConfiguration:
+              nodeRegistration:
+                kubeletExtraArgs:
+                  eviction-hard: nodefs.available<0%,nodefs.inodesFree<0%,imagefs.available<0%
+            clusterConfiguration:
+              controllerManager:
+                extraArgs:
+                  enable-hostpath-provisioner: "true"
+
+    # Worker DockerMachineTemplate
+    - id: workerMachineTemplate
+      template:
+        apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
+        kind: DockerMachineTemplate
+        metadata:
+          name: ${schema.spec.clusterName}-worker
+        spec:
+          template:
+            spec:
+              extraMounts:
+                - containerPath: /var/run/docker.sock
+                  hostPath: /var/run/docker.sock
+
+    # KubeadmConfigTemplate for worker bootstrap
+    - id: workerBootstrap
+      template:
+        apiVersion: bootstrap.cluster.x-k8s.io/v1beta1
+        kind: KubeadmConfigTemplate
+        metadata:
+          name: ${schema.spec.clusterName}-worker
+        spec:
+          template:
+            spec:
+              joinConfiguration:
+                nodeRegistration:
+                  kubeletExtraArgs:
+                    eviction-hard: nodefs.available<0%,nodefs.inodesFree<0%,imagefs.available<0%
+
+    # MachineDeployment for worker nodes
+    - id: workerMachineDeployment
+      template:
+        apiVersion: cluster.x-k8s.io/v1beta1
+        kind: MachineDeployment
+        metadata:
+          name: ${schema.spec.clusterName}-worker
+        spec:
+          clusterName: ${schema.spec.clusterName}
+          replicas: ${schema.spec.workerCount}
+          selector:
+            matchLabels: {}
+          template:
+            spec:
+              clusterName: ${schema.spec.clusterName}
+              version: ${schema.spec.kubernetesVersion}
+              bootstrap:
+                configRef:
+                  apiVersion: bootstrap.cluster.x-k8s.io/v1beta1
+                  kind: KubeadmConfigTemplate
+                  name: ${schema.spec.clusterName}-worker
+              infrastructureRef:
+                apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
+                kind: DockerMachineTemplate
+                name: ${schema.spec.clusterName}-worker
+
+{{- end }}
