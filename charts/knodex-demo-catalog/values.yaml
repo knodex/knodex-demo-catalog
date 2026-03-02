@@ -1,0 +1,23 @@
+# Demo Catalog - Values
+# Minimal values for static RGD catalog
+
+nameOverride: ""
+fullnameOverride: ""
+
+# --- RGD Toggles ---
+kindCluster:
+  enabled: true
+  podCidr: "192.168.0.0/16"
+
+argocdClusterRegister:
+  enabled: true
+  rgdName: argocd-cluster-register
+
+deployApplication:
+  enabled: true
+  rgdName: deploy-application
+
+# --- Dependencies ---
+# Enable to install Kro alongside the RGDs
+kro:
+  enabled: false
