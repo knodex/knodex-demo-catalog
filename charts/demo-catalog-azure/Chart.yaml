@@ -1,0 +1,36 @@
+apiVersion: v2
+name: demo-catalog-azure
+description: |
+  Demo catalog of Azure Landing Zone RGDs using Kro Resource Graph Definitions.
+  Provides ASO Credential, Hub VNet, and Spoke VNet patterns for demonstration.
+
+type: application
+
+version: 0.1.0
+appVersion: "0.1.0"
+
+keywords:
+  - azure
+  - kro
+  - rgd
+  - aso
+  - kubernetes
+  - infrastructure
+  - demo
+
+home: https://github.com/provops-org/demo-catalog-azure
+
+sources:
+  - https://github.com/provops-org/demo-catalog-azure
+
+maintainers:
+  - name: provops
+    email: tparis@provops.com
+
+kubeVersion: ">=1.30.0"
+
+annotations:
+  knodex.io/aso-version: ">=2.13.0"
+  knodex.io/kro-version: ">=0.7.0"
+  category: infrastructure
+  artifacthub.io/license: Apache-2.0

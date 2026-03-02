@@ -1,0 +1,5 @@
+# Demo Catalog Azure - Values
+# Minimal values for static RGD catalog
+
+nameOverride: ""
+fullnameOverride: ""

@@ -1,0 +1,215 @@
+# ALZ Spoke VNet - Landing Zone Spoke Network with Hub Peering
+# Creates spoke VNet peered to ALZ hub with NSG and routing through Azure Firewall
+# Target: Platform Operators
+# Depends on: alz-hub (uses external reference to hub instance)
+# Note: Custom subnets require Kro 0.7+ forEach - this version creates a default subnet
+---
+apiVersion: kro.run/v1alpha1
+kind: ResourceGraphDefinition
+metadata:
+  name: alz-spoke-vnet
+  annotations:
+    kro.run/allow-breaking-changes: "true"
+    knodex.io/catalog: "true"
+    knodex.io/title: "Azure Landing Zone Spoke VNet"
+    knodex.io/category: "networking"
+    knodex.io/tags: "alz,hub-spoke,networking,spoke,peering"
+    knodex.io/description: |
+      Spoke VNet peered to ALZ hub network with NSG and route table for firewall transit -
+      requires alz-hub instance for hub connectivity.
+    knodex.io/target-audience: "platform-operators"
+    knodex.io/depends-on: "alz-hub"
+spec:
+  schema:
+    apiVersion: v1alpha1
+    kind: ALZSpokeVNet
+    spec:
+      # === REQUIRED INPUTS ===
+      name: string
+      addressSpace: string
+
+      # === REQUIRED - Hub Reference (renders as resource picker in Knodex UI) ===
+      externalRef:
+        hubVnetRef:
+          name: string | default=""
+          namespace: string | default=""
+
+      # === SUBNET TOGGLES ===
+      enableFlexibleDatabase: boolean | default=false
+
+      # === ADVANCED CONFIGURATION (hidden by default in UI) ===
+      advanced:
+        # Resource tags (applied to all Azure resources)
+        tags: "map[string]string"
+        # Subnet Configuration
+        defaultSubnetPrefix: string | default=""
+        flexibleDatabaseSubnetPrefix: string | default=""
+        # Peering Settings
+        allowGatewayTransit: boolean | default=false
+        useRemoteGateways: boolean | default=false
+        allowForwardedTraffic: boolean | default=true
+        # NSG
+        createDefaultNsg: boolean | default=true
+        # Credential override
+        asoCredentialSecretName: string | default="aso-credential"
+
+    # === STATUS OUTPUTS ===
+    status:
+      location: ${resourceGroup.spec.location}
+      resourceGroupName: ${resourceGroup.metadata.name}
+      vnetName: ${spokeVnet.status.?name.orValue("")}
+      vnetId: ${spokeVnet.status.?id.orValue("")}
+      nsgId: ${defaultNsg.status.?id.orValue("")}
+      peeringToHubName: ${peeringToHub.status.?name.orValue("")}
+      peeringFromHubName: ${peeringFromHub.status.?name.orValue("")}
+      defaultSubnetId: ${defaultSubnet.status.?id.orValue("")}
+      flexibleDatabaseSubnetId: ${flexibleDatabaseSubnet.status.?id.orValue("")}
+      hubVnetId: ${hubVnetRef.status.?vnetId.orValue("")}
+
+  # === RESOURCES ===
+  resources:
+    # Resource Group
+    - id: resourceGroup
+      template:
+        apiVersion: resources.azure.com/v1api20200601
+        kind: ResourceGroup
+        metadata:
+          name: rg-${schema.spec.name}-spoke
+          annotations:
+            serviceoperator.azure.com/credential-from: ${schema.spec.advanced.asoCredentialSecretName}
+        spec:
+          location: ${hubVnetRef.status.?location}
+          tags: ${schema.spec.advanced.tags}
+
+    # External Reference to Hub VNet instance
+    - id: hubVnetRef
+      externalRef:
+        apiVersion: kro.run/v1alpha1
+        kind: ALZHub
+        metadata:
+          name: ${schema.spec.externalRef.hubVnetRef.name}
+          namespace: ${schema.spec.externalRef.hubVnetRef.namespace}
+
+    # Default Network Security Group
+    - id: defaultNsg
+      includeWhen:
+        - ${schema.spec.advanced.createDefaultNsg}
+      template:
+        apiVersion: network.azure.com/v1api20240301
+        kind: NetworkSecurityGroup
+        metadata:
+          name: nsg-${schema.spec.name}-default
+          annotations:
+            serviceoperator.azure.com/credential-from: ${schema.spec.advanced.asoCredentialSecretName}
+        spec:
+          owner:
+            name: ${resourceGroup.metadata.name}
+          location: ${hubVnetRef.status.?location}
+          tags: ${schema.spec.advanced.tags}
+
+    # Spoke Virtual Network
+    - id: spokeVnet
+      template:
+        apiVersion: network.azure.com/v1api20240301
+        kind: VirtualNetwork
+        metadata:
+          name: vnet-${schema.spec.name}
+          annotations:
+            serviceoperator.azure.com/credential-from: ${schema.spec.advanced.asoCredentialSecretName}
+        spec:
+          owner:
+            name: ${resourceGroup.metadata.name}
+          location: ${hubVnetRef.status.?location}
+          addressSpace:
+            addressPrefixes:
+              - ${schema.spec.addressSpace}
+          tags: ${schema.spec.advanced.tags}
+
+    # VNet Peering: Spoke → Hub
+    - id: peeringToHub
+      template:
+        apiVersion: network.azure.com/v1api20240301
+        kind: VirtualNetworksVirtualNetworkPeering
+        metadata:
+          name: vnet-${schema.spec.name}-peer-to-hub
+          annotations:
+            serviceoperator.azure.com/credential-from: ${schema.spec.advanced.asoCredentialSecretName}
+        spec:
+          owner:
+            name: ${spokeVnet.metadata.name}
+          azureName: peer-to-${hubVnetRef.status.?vnetName}
+          allowVirtualNetworkAccess: true
+          allowForwardedTraffic: ${schema.spec.advanced.allowForwardedTraffic}
+          allowGatewayTransit: false
+          useRemoteGateways: ${schema.spec.advanced.useRemoteGateways}
+          remoteVirtualNetwork:
+            reference:
+              armId: ${hubVnetRef.status.?vnetId}
+
+    # VNet Peering: Hub → Spoke (requires hub subscription credentials)
+    - id: peeringFromHub
+      template:
+        apiVersion: network.azure.com/v1api20240301
+        kind: VirtualNetworksVirtualNetworkPeering
+        metadata:
+          name: vnet-${hubVnetRef.status.?vnetName}-peer-to-${schema.spec.name}
+          annotations:
+            serviceoperator.azure.com/credential-from: ${schema.spec.advanced.asoCredentialSecretName}
+        spec:
+          owner:
+            armId: ${hubVnetRef.status.?vnetId}
+          azureName: peer-to-${schema.spec.name}
+          allowVirtualNetworkAccess: true
+          allowForwardedTraffic: true
+          allowGatewayTransit: ${schema.spec.advanced.allowGatewayTransit}
+          useRemoteGateways: false
+          remoteVirtualNetwork:
+            reference:
+              armId: ${spokeVnet.status.id}
+
+    # Default Subnet
+    - id: defaultSubnet
+      template:
+        apiVersion: network.azure.com/v1api20240301
+        kind: VirtualNetworksSubnet
+        metadata:
+          name: vnet-${schema.spec.name}-snet-private-endpoints
+          annotations:
+            serviceoperator.azure.com/credential-from: ${schema.spec.advanced.asoCredentialSecretName}
+        spec:
+          owner:
+            name: ${spokeVnet.metadata.name}
+          azureName: snet-private-endpoints
+          addressPrefix: '${schema.spec.advanced.defaultSubnetPrefix != "" ? schema.spec.advanced.defaultSubnetPrefix : schema.spec.addressSpace}'
+          networkSecurityGroup:
+            reference:
+              armId: ${defaultNsg.status.?id}
+          routeTable:
+            reference:
+              armId: ${hubVnetRef.status.?spokeRouteTableId}
+
+    # Flexible Database Subnet (delegated to Microsoft.DBforPostgreSQL/flexibleServers)
+    - id: flexibleDatabaseSubnet
+      includeWhen:
+        - ${schema.spec.enableFlexibleDatabase}
+      template:
+        apiVersion: network.azure.com/v1api20240301
+        kind: VirtualNetworksSubnet
+        metadata:
+          name: vnet-${schema.spec.name}-snet-flexible-database
+          annotations:
+            serviceoperator.azure.com/credential-from: ${schema.spec.advanced.asoCredentialSecretName}
+        spec:
+          owner:
+            name: ${spokeVnet.metadata.name}
+          azureName: snet-flexible-database
+          addressPrefix: '${schema.spec.advanced.flexibleDatabaseSubnetPrefix != "" ? schema.spec.advanced.flexibleDatabaseSubnetPrefix : schema.spec.addressSpace}'
+          delegations:
+            - name: flexible-database-delegation
+              serviceName: Microsoft.DBforPostgreSQL/flexibleServers
+          networkSecurityGroup:
+            reference:
+              armId: ${defaultNsg.status.?id}
+          routeTable:
+            reference:
+              armId: ${hubVnetRef.status.?spokeRouteTableId}
