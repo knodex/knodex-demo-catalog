@@ -18,13 +18,13 @@ keywords:
   - infrastructure
   - demo
 
-home: https://github.com/provops-org/demo-catalog-azure
+home: https://github.com/knodex/knodex-demo-catalog
 
 sources:
-  - https://github.com/provops-org/demo-catalog-azure
+  - https://github.com/knodex/knodex-demo-catalog
 
 maintainers:
-  - name: provops
+  - name: knodex
     email: tparis@provops.com
 
 kubeVersion: ">=1.30.0"

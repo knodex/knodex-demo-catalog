@@ -18,6 +18,12 @@ Demo Helm chart showcasing Azure Landing Zone Resource Graph Definitions (RGDs) 
 
 ## Installation
 
+**From OCI registry:**
+```bash
+helm install demo-catalog oci://ghcr.io/knodex/demo-catalog-azure
+```
+
+**From source:**
 ```bash
 helm install demo-catalog charts/demo-catalog-azure/
 ```

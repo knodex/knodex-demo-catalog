@@ -1,0 +1,33 @@
+name: Release Helm Chart to OCI
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "charts/**"
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Helm
+        uses: azure/setup-helm@v4
+
+      - name: Login to GHCR
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | helm registry login ghcr.io -u ${{ github.actor }} --password-stdin
+
+      - name: Build dependencies
+        run: helm dependency build charts/demo-catalog-azure/
+
+      - name: Package chart
+        run: helm package charts/demo-catalog-azure/ --destination .helm-packages
+
+      - name: Push to GHCR
+        run: helm push .helm-packages/*.tgz oci://ghcr.io/knodex
