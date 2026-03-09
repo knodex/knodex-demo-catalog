@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.2](https://github.com/knodex/knodex-demo-catalog/compare/knodex-demo-catalog-v0.2.1...knodex-demo-catalog-v0.2.2) (2026-03-09)
+
+
+### Bug Fixes
+
+* **chart:** simplify NOTES.txt and default to OCI registry install ([4a6f1c6](https://github.com/knodex/knodex-demo-catalog/commit/4a6f1c628635968efcdab24e3c3c65de9dcf78ba))
+
 ## [0.2.1](https://github.com/knodex/knodex-demo-catalog/compare/knodex-demo-catalog-v0.2.0...knodex-demo-catalog-v0.2.1) (2026-03-09)
 
 
