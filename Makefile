@@ -48,11 +48,7 @@ bootstrap: preflight
 	@echo "==> ArgoCD is ready."
 
 	@echo ""
-	@if [ "$(LOCAL)" = "1" ]; then \
-		$(MAKE) --no-print-directory install-catalog-local; \
-	else \
-		$(MAKE) --no-print-directory install-catalog; \
-	fi
+	@$(MAKE) --no-print-directory install-catalog
 	@echo ""
 	@$(MAKE) --no-print-directory verify
 	@echo ""
