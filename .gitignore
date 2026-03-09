@@ -14,3 +14,12 @@ Thumbs.db
 
 # Environment
 .env
+
+# BMAD scaffolding
+_bmad/
+_bmad-output/
+
+# CLI/IDE config
+.claude/
+.cursor/
+.windsurf/

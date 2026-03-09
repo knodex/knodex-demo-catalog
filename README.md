@@ -12,20 +12,27 @@ Demo Helm chart showcasing Azure Landing Zone Resource Graph Definitions (RGDs) 
 
 ## Prerequisites
 
-- Kubernetes 1.30+
-- [Kro](https://kro.run) v0.7+
+- Kubernetes 1.34+
+- [Knodex](https://github.com/knodex/knodex) installed
 - [Azure Service Operator](https://azure.github.io/azure-service-operator/) v2.13+
+
+### Install Knodex
+
+```bash
+helm install knodex oci://ghcr.io/knodex/charts/knodex \
+  --namespace knodex --create-namespace
+```
+
+Access the Knodex UI:
+```bash
+kubectl port-forward svc/knodex-server 8080:8080 -n knodex
+```
 
 ## Installation
 
 **From OCI registry:**
 ```bash
-helm install demo-catalog oci://ghcr.io/knodex/demo-catalog-azure
-```
-
-**From source:**
-```bash
-helm install demo-catalog charts/demo-catalog-azure/
+helm install knodex-demo-catalog oci://ghcr.io/knodex/charts/knodex-demo-catalog
 ```
 
 ## Usage

@@ -1,5 +1,5 @@
 apiVersion: v2
-name: demo-catalog-azure
+name: knodex-demo-catalog
 description: |
   Demo catalog of Azure Landing Zone RGDs using Kro Resource Graph Definitions.
   Provides ASO Credential, Hub VNet, and Spoke VNet patterns for demonstration.
