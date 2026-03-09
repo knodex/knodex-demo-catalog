@@ -1,0 +1,117 @@
+{{- if .Values.argocdClusterRegister.enabled }}
+# ArgoCD Cluster Registration
+# Registers a KindCluster with the local ArgoCD instance
+# Uses a Job to extract CAPI kubeconfig credentials and create the ArgoCD cluster secret
+# Target: Platform Engineers
+---
+apiVersion: kro.run/v1alpha1
+kind: ResourceGraphDefinition
+metadata:
+  name: {{ .Values.argocdClusterRegister.rgdName | default "argocd-cluster-register" }}
+  labels:
+    {{- include "knodex-demo-catalog.labels" . | nindent 4 }}
+  annotations:
+    kro.run/allow-breaking-changes: "true"
+    knodex.io/catalog: "true"
+    knodex.io/title: "ArgoCD Cluster Registration"
+    knodex.io/description: "Register a KindCluster with the local ArgoCD instance"
+    knodex.io/tags: "argocd,cluster,registration,gitops"
+    knodex.io/category: "gitops"
+    knodex.io/version: "1.0.0"
+spec:
+  schema:
+    apiVersion: v1alpha1
+    kind: ArgocdClusterRegistration
+    spec:
+      # === REQUIRED INPUTS ===
+      clusterName: string
+
+      # === EXTERNAL REFERENCES ===
+      externalRef:
+        targetCluster:
+          name: string | default=""
+          namespace: string | default=""
+
+      # === ADVANCED CONFIGURATION ===
+      advanced:
+        argocdNamespace: string | default="argocd"
+
+    # === STATUS OUTPUTS ===
+    status:
+      jobName: ${registrationJob.metadata.name}
+
+  # === RESOURCES ===
+  resources:
+    # External reference to target KindCluster (waits for it to exist/be ready)
+    - id: targetCluster
+      externalRef:
+        apiVersion: kro.run/v1alpha1
+        kind: KindCluster
+        metadata:
+          name: ${schema.spec.externalRef.targetCluster.name}
+          namespace: ${schema.spec.externalRef.targetCluster.namespace}
+
+    # Job to extract CAPI kubeconfig and create ArgoCD cluster secret
+    - id: registrationJob
+      template:
+        apiVersion: batch/v1
+        kind: Job
+        metadata:
+          name: ${schema.spec.clusterName}-argocd-register
+        spec:
+          backoffLimit: 10
+          ttlSecondsAfterFinished: 300
+          template:
+            spec:
+              serviceAccountName: argocd-cluster-registrar
+              restartPolicy: OnFailure
+              containers:
+                - name: register
+                  image: bitnami/kubectl:latest
+                  command:
+                    - /bin/bash
+                    - -c
+                    - |
+                      set -euo pipefail
+                      CLUSTER_NAME="${schema.spec.clusterName}"
+                      SECRET_NAME="${schema.spec.clusterName}-kubeconfig"
+                      ARGOCD_NS="${schema.spec.advanced.argocdNamespace}"
+
+                      echo "Waiting for kubeconfig secret..."
+                      until kubectl get secret "$SECRET_NAME" -n default 2>/dev/null; do
+                        echo "  Secret not found yet, retrying in 5s..."
+                        sleep 5
+                      done
+
+                      echo "Extracting credentials from kubeconfig..."
+                      KUBECONFIG_DATA=$(kubectl get secret "$SECRET_NAME" -n default -o jsonpath='{.data.value}' | base64 -d)
+                      CERT_DATA=$(echo "$KUBECONFIG_DATA" | grep "client-certificate-data" | awk '{print $2}')
+                      KEY_DATA=$(echo "$KUBECONFIG_DATA" | grep "client-key-data" | awk '{print $2}')
+
+                      SERVER_URL="https://${schema.spec.clusterName}-lb:6443"
+
+                      echo "Creating ArgoCD cluster secret for $CLUSTER_NAME..."
+                      cat <<EOSECRET | kubectl apply -f -
+                      apiVersion: v1
+                      kind: Secret
+                      metadata:
+                        name: cluster-${schema.spec.clusterName}
+                        namespace: $ARGOCD_NS
+                        labels:
+                          argocd.argoproj.io/secret-type: cluster
+                      type: Opaque
+                      stringData:
+                        name: $CLUSTER_NAME
+                        server: "$SERVER_URL"
+                        config: |
+                          {
+                            "tlsClientConfig": {
+                              "insecure": true,
+                              "certData": "$CERT_DATA",
+                              "keyData": "$KEY_DATA"
+                            }
+                          }
+                      EOSECRET
+
+                      echo "Cluster $CLUSTER_NAME registered with ArgoCD at $SERVER_URL"
+{{- end }}

@@ -1,0 +1,71 @@
+
+Knodex Demo Catalog installed successfully!
+RGDs: KindCluster, ArgocdClusterRegistration, ApplicationDeployment
+
+================================================================================
+  ArgoCD UI
+================================================================================
+
+  kubectl port-forward svc/argocd-server -n argocd 8080:443
+
+  URL:      https://localhost:8080
+  Username: admin
+  Password: kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 --decode
+
+================================================================================
+  Step-by-Step: Create a Workload Cluster and Deploy an App
+================================================================================
+
+  1. Create a workload cluster:
+
+     kubectl apply -f - <<EOF
+     apiVersion: kro.run/v1alpha1
+     kind: KindCluster
+     metadata:
+       name: my-cluster
+     spec:
+       clusterName: my-cluster
+       kubernetesVersion: v1.31.0
+       workerCount: 1
+     EOF
+
+     kubectl get kindcluster my-cluster -w
+
+  2. Register the cluster with ArgoCD:
+
+     kubectl apply -f - <<EOF
+     apiVersion: kro.run/v1alpha1
+     kind: ArgocdClusterRegistration
+     metadata:
+       name: my-cluster
+     spec:
+       clusterName: my-cluster
+       externalRef:
+         targetCluster:
+           name: my-cluster
+           namespace: default
+     EOF
+
+     kubectl get argocdclusterregistration my-cluster -w
+
+  3. Deploy an application:
+
+     kubectl apply -f - <<EOF
+     apiVersion: kro.run/v1alpha1
+     kind: ApplicationDeployment
+     metadata:
+       name: podinfo
+     spec:
+       appName: podinfo
+       repoURL: https://github.com/stefanprodan/podinfo
+       path: kustomize
+       targetRevision: master
+       externalRef:
+         targetCluster:
+           name: my-cluster
+           namespace: default
+     EOF
+
+     kubectl get applicationdeployment podinfo -w
+
+  These steps can also be performed from the ArgoCD UI or any Kubernetes dashboard.
