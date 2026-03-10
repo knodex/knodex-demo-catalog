@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.3](https://github.com/knodex/knodex-demo-catalog/compare/knodex-demo-catalog-v0.2.2...knodex-demo-catalog-v0.2.3) (2026-03-10)
+
+
+### Features
+
+* **bootstrap:** add Knodex UI install and simplify README ([e6aebbb](https://github.com/knodex/knodex-demo-catalog/commit/e6aebbb49bc6a21fd9632724e30e9da96420accc))
+
 ## [0.2.2](https://github.com/knodex/knodex-demo-catalog/compare/knodex-demo-catalog-v0.2.1...knodex-demo-catalog-v0.2.2) (2026-03-09)
 
 
