@@ -1,4 +1,4 @@
-.PHONY: bootstrap demo clean argocd-password verify preflight install-catalog install-catalog-local _wait-for-catalog
+.PHONY: bootstrap demo clean argocd-password verify preflight install-catalog install-catalog-local _wait-for-catalog install-knodex
 
 CLUSTER_NAME := mgmt
 KIND_CONFIG := scripts/kind-config.yaml
@@ -8,6 +8,10 @@ CHART_OCI := oci://ghcr.io/knodex/charts/knodex-demo-catalog
 CHART_LOCAL := charts/knodex-demo-catalog
 RELEASE_NAME := knodex-demo-catalog
 CHART_NAMESPACE := knodex
+KNODEX_OCI := oci://ghcr.io/knodex/charts/knodex
+KNODEX_VERSION := 0.0.22
+KNODEX_RELEASE := knodex
+KNODEX_WAIT_TIMEOUT := 120
 CAPI_WAIT_TIMEOUT := 300
 ARGOCD_WAIT_TIMEOUT := 300
 KRO_WAIT_TIMEOUT := 120
@@ -48,6 +52,8 @@ bootstrap: preflight
 	@echo "==> ArgoCD is ready."
 
 	@echo ""
+	@$(MAKE) --no-print-directory install-knodex
+	@echo ""
 	@$(MAKE) --no-print-directory install-catalog
 	@echo ""
 	@$(MAKE) --no-print-directory verify
@@ -86,6 +92,30 @@ install-catalog-local:
 			--set kro.enabled=true 2>&1 | grep -v 'unrecognized format'; \
 	fi
 	@$(MAKE) --no-print-directory _wait-for-catalog
+
+## install-knodex: Install the Knodex UI from OCI registry
+install-knodex:
+	@echo "==> Installing Knodex UI..."
+	@if helm status $(KNODEX_RELEASE) -n $(CHART_NAMESPACE) >/dev/null 2>&1; then \
+		echo "    Knodex already installed, upgrading..."; \
+		helm upgrade $(KNODEX_RELEASE) $(KNODEX_OCI) \
+			--version $(KNODEX_VERSION) \
+			--namespace $(CHART_NAMESPACE) \
+			--set-json 'global.imagePullSecrets=[]' \
+			--set server.config.cookie.secure=false \
+			--set kro.enabled=false 2>&1 | grep -v 'unrecognized format'; \
+	else \
+		helm install $(KNODEX_RELEASE) $(KNODEX_OCI) \
+			--version $(KNODEX_VERSION) \
+			--namespace $(CHART_NAMESPACE) \
+			--create-namespace \
+			--set-json 'global.imagePullSecrets=[]' \
+			--set server.config.cookie.secure=false \
+			--set kro.enabled=false 2>&1 | grep -v 'unrecognized format'; \
+	fi
+	@echo "==> Waiting for Knodex to become ready..."
+	@kubectl wait --for=condition=ready pod -l app.kubernetes.io/name=knodex -n $(CHART_NAMESPACE) --timeout=$(KNODEX_WAIT_TIMEOUT)s
+	@echo "==> Knodex UI is ready."
 
 ## _wait-for-catalog: Internal target to wait for Kro and RGDs
 _wait-for-catalog:

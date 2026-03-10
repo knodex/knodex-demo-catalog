@@ -3,6 +3,16 @@ Knodex Demo Catalog installed successfully!
 RGDs: KindCluster, ArgocdClusterRegistration, ApplicationDeployment
 
 ================================================================================
+  Knodex UI
+================================================================================
+
+  kubectl port-forward svc/knodex-server -n knodex 3000:8080
+
+  URL:      http://localhost:3000
+  Username: admin
+  Password: kubectl -n knodex get secret knodex-initial-admin-password -o jsonpath="{.data.password}" | base64 -d
+
+================================================================================
   ArgoCD UI
 ================================================================================
 
@@ -16,11 +26,11 @@ RGDs: KindCluster, ArgocdClusterRegistration, ApplicationDeployment
   Next Steps
 ================================================================================
 
-  Create resources from the ArgoCD UI or with kubectl:
+  Use the Knodex UI to:
 
-  1. Create a workload cluster    kubectl get rgd kind-cluster -o yaml
-  2. Register it with ArgoCD      kubectl get rgd argocd-cluster-register -o yaml
-  3. Deploy an application         kubectl get rgd deploy-application -o yaml
+  1. Create a workload cluster    (KindCluster)
+  2. Register it with ArgoCD      (ArgocdClusterRegistration)
+  3. Deploy an application         (ApplicationDeployment)
 
   Monitor resources:
 
