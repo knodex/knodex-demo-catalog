@@ -98,9 +98,29 @@ demo: preflight
 	@echo "==> Demo catalog installed."
 
 	@echo ""
-	@helm get notes $(CATALOG_RELEASE) -n $(NAMESPACE)
+	@echo "================================================================================"
+	@echo "  Knodex UI"
+	@echo "================================================================================"
+	@echo ""
+	@echo "  kubectl port-forward svc/knodex-server -n $(NAMESPACE) 3000:8080"
+	@echo ""
+	@echo "  URL:      http://localhost:3000"
+	@echo "  Username: admin"
+	@printf "  Password: "; kubectl -n $(NAMESPACE) get secret knodex-initial-admin-password -o jsonpath="{.data.password}" 2>/dev/null | base64 -d; echo ""
+	@echo ""
+	@echo "================================================================================"
+	@echo "  ArgoCD UI"
+	@echo "================================================================================"
+	@echo ""
+	@echo "  kubectl port-forward svc/argocd-server -n $(ARGOCD_NAMESPACE) 8080:443"
+	@echo ""
+	@echo "  URL:      https://localhost:8080"
+	@echo "  Username: admin"
+	@printf "  Password: "; kubectl -n $(ARGOCD_NAMESPACE) get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" 2>/dev/null | base64 -d; echo ""
+	@echo ""
+	@echo "================================================================================"
 
-## demo-full: Full end-to-end — bootstrap + create workload cluster + register with ArgoCD + deploy podinfo
+## demo-full: Full end-to-end — bootstrap + create workload cluster + register with ArgoCD + deploy guestbook
 demo-full: demo
 	@echo ""
 	@echo "==> Creating workload cluster '$(WORKLOAD_CLUSTER_NAME)'..."
