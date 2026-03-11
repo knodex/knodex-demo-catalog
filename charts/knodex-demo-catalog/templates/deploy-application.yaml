@@ -25,9 +25,9 @@ spec:
       # === REQUIRED INPUTS ===
       # appName must be a valid DNS subdomain (lowercase alphanumeric, hyphens)
       appName: string
-      repoURL: string
-      path: string | default="."
-      targetRevision: string | default="HEAD"
+      repoURL: string | default="https://github.com/argoproj/argocd-example-apps"
+      path: string | default="guestbook"
+      targetRevision: string | default="master"
 
       # === EXTERNAL REFERENCES ===
       externalRef:
@@ -51,6 +51,7 @@ spec:
       applicationName: ${argoApp.metadata.name}
       syncStatus: ${argoApp.status.?sync.?status.orValue("Unknown")}
       healthStatus: ${argoApp.status.?health.?status.orValue("Unknown")}
+      accessCommand: ${"clusterctl get kubeconfig " + targetCluster.metadata.name + " > /tmp/" + targetCluster.metadata.name + ".kubeconfig && kubectl --kubeconfig /tmp/" + targetCluster.metadata.name + ".kubeconfig port-forward svc/" + argoApp.metadata.name + " 8080:80 -n " + argoApp.spec.destination.namespace}
 
   # === RESOURCES ===
   resources:
@@ -81,7 +82,7 @@ spec:
             path: ${schema.spec.path}
             targetRevision: ${schema.spec.targetRevision}
           destination:
-            server: https://${schema.spec.externalRef.targetCluster.name}-lb:6443
+            server: https://${targetCluster.spec.clusterName}-lb:6443
             namespace: ${schema.spec.advanced.destinationNamespace}
           syncPolicy:
             automated:

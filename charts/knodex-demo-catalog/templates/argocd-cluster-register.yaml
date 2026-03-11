@@ -39,6 +39,9 @@ spec:
     # === STATUS OUTPUTS ===
     status:
       jobName: ${registrationJob.metadata.name}
+      clusterRegistered: ${targetCluster.metadata.name}
+      argocdUI: ${"kubectl port-forward svc/argocd-server -n argocd 8080:443" + targetCluster.metadata.name.substring(0,0)}
+      argocdPassword: ${"kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath={.data.password} | base64 -d" + targetCluster.metadata.name.substring(0,0)}
 
   # === RESOURCES ===
   resources:

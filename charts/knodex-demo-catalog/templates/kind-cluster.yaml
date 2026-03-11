@@ -44,7 +44,7 @@ spec:
     # Cluster API Cluster resource
     - id: cluster
       template:
-        apiVersion: cluster.x-k8s.io/v1beta1
+        apiVersion: cluster.x-k8s.io/v1beta2
         kind: Cluster
         metadata:
           name: ${schema.spec.clusterName}
@@ -59,18 +59,18 @@ spec:
               cidrBlocks:
                 - ${schema.spec.advanced.serviceCidr}
           controlPlaneRef:
-            apiVersion: controlplane.cluster.x-k8s.io/v1beta1
+            apiGroup: controlplane.cluster.x-k8s.io
             kind: KubeadmControlPlane
             name: ${schema.spec.clusterName}-control-plane
           infrastructureRef:
-            apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
+            apiGroup: infrastructure.cluster.x-k8s.io
             kind: DockerCluster
             name: ${schema.spec.clusterName}
 
     # Docker infrastructure cluster (auto-managed by CAPD)
     - id: dockerCluster
       template:
-        apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
+        apiVersion: infrastructure.cluster.x-k8s.io/v1beta2
         kind: DockerCluster
         metadata:
           name: ${schema.spec.clusterName}
@@ -78,7 +78,7 @@ spec:
     # Control Plane DockerMachineTemplate
     - id: controlPlaneMachineTemplate
       template:
-        apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
+        apiVersion: infrastructure.cluster.x-k8s.io/v1beta2
         kind: DockerMachineTemplate
         metadata:
           name: ${schema.spec.clusterName}-control-plane
@@ -92,7 +92,7 @@ spec:
     # KubeadmControlPlane
     - id: controlPlane
       template:
-        apiVersion: controlplane.cluster.x-k8s.io/v1beta1
+        apiVersion: controlplane.cluster.x-k8s.io/v1beta2
         kind: KubeadmControlPlane
         metadata:
           name: ${schema.spec.clusterName}-control-plane
@@ -100,28 +100,32 @@ spec:
           replicas: ${schema.spec.advanced.controlPlaneReplicas}
           version: ${schema.spec.kubernetesVersion}
           machineTemplate:
-            infrastructureRef:
-              apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
-              kind: DockerMachineTemplate
-              name: ${schema.spec.clusterName}-control-plane
+            spec:
+              infrastructureRef:
+                apiGroup: infrastructure.cluster.x-k8s.io
+                kind: DockerMachineTemplate
+                name: ${schema.spec.clusterName}-control-plane
           kubeadmConfigSpec:
             initConfiguration:
               nodeRegistration:
                 kubeletExtraArgs:
-                  eviction-hard: nodefs.available<0%,nodefs.inodesFree<0%,imagefs.available<0%
+                  - name: eviction-hard
+                    value: "nodefs.available<0%,nodefs.inodesFree<0%,imagefs.available<0%"
             joinConfiguration:
               nodeRegistration:
                 kubeletExtraArgs:
-                  eviction-hard: nodefs.available<0%,nodefs.inodesFree<0%,imagefs.available<0%
+                  - name: eviction-hard
+                    value: "nodefs.available<0%,nodefs.inodesFree<0%,imagefs.available<0%"
             clusterConfiguration:
               controllerManager:
                 extraArgs:
-                  enable-hostpath-provisioner: "true"
+                  - name: enable-hostpath-provisioner
+                    value: "true"
 
     # Worker DockerMachineTemplate
     - id: workerMachineTemplate
       template:
-        apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
+        apiVersion: infrastructure.cluster.x-k8s.io/v1beta2
         kind: DockerMachineTemplate
         metadata:
           name: ${schema.spec.clusterName}-worker
@@ -135,7 +139,7 @@ spec:
     # KubeadmConfigTemplate for worker bootstrap
     - id: workerBootstrap
       template:
-        apiVersion: bootstrap.cluster.x-k8s.io/v1beta1
+        apiVersion: bootstrap.cluster.x-k8s.io/v1beta2
         kind: KubeadmConfigTemplate
         metadata:
           name: ${schema.spec.clusterName}-worker
@@ -145,12 +149,13 @@ spec:
               joinConfiguration:
                 nodeRegistration:
                   kubeletExtraArgs:
-                    eviction-hard: nodefs.available<0%,nodefs.inodesFree<0%,imagefs.available<0%
+                    - name: eviction-hard
+                      value: "nodefs.available<0%,nodefs.inodesFree<0%,imagefs.available<0%"
 
     # MachineDeployment for worker nodes
     - id: workerMachineDeployment
       template:
-        apiVersion: cluster.x-k8s.io/v1beta1
+        apiVersion: cluster.x-k8s.io/v1beta2
         kind: MachineDeployment
         metadata:
           name: ${schema.spec.clusterName}-worker
@@ -165,11 +170,11 @@ spec:
               version: ${schema.spec.kubernetesVersion}
               bootstrap:
                 configRef:
-                  apiVersion: bootstrap.cluster.x-k8s.io/v1beta1
+                  apiGroup: bootstrap.cluster.x-k8s.io
                   kind: KubeadmConfigTemplate
                   name: ${schema.spec.clusterName}-worker
               infrastructureRef:
-                apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
+                apiGroup: infrastructure.cluster.x-k8s.io
                 kind: DockerMachineTemplate
                 name: ${schema.spec.clusterName}-worker
 
