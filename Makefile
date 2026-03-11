@@ -122,20 +122,20 @@ demo-full: demo
 	@echo "==> Waiting for cluster to be provisioned..."
 	@./scripts/wait-for-cluster.sh $(WORKLOAD_CLUSTER_NAME) $(CAPI_WAIT_TIMEOUT)
 
-	@echo "==> Deploying sample application (podinfo)..."
+	@echo "==> Deploying sample application (guestbook)..."
 	@kubectl apply -f - <<< '{ \
 		"apiVersion": "kro.run/v1alpha1", \
 		"kind": "ApplicationDeployment", \
-		"metadata": { "name": "podinfo" }, \
-		"spec": { "appName": "podinfo", "repoURL": "https://github.com/stefanprodan/podinfo", "path": "kustomize", "targetRevision": "master", "externalRef": { "targetCluster": { "name": "$(WORKLOAD_CLUSTER_NAME)", "namespace": "default" } } } \
+		"metadata": { "name": "guestbook" }, \
+		"spec": { "appName": "guestbook", "externalRef": { "targetCluster": { "name": "$(WORKLOAD_CLUSTER_NAME)", "namespace": "default" } } } \
 	}'
 
 	@echo "==> Waiting for application to sync..."
-	@./scripts/wait-for-app.sh podinfo $(ARGOCD_WAIT_TIMEOUT)
+	@./scripts/wait-for-app.sh guestbook $(ARGOCD_WAIT_TIMEOUT)
 	@echo ""
 	@echo "==> Demo complete!"
 	@echo "    Workload cluster: $(WORKLOAD_CLUSTER_NAME)"
-	@echo "    Application:      podinfo (Synced + Healthy)"
+	@echo "    Application:      guestbook (Synced + Healthy)"
 
 ## clean: Delete the Kind management cluster
 clean:

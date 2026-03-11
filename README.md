@@ -21,7 +21,7 @@ A demo Helm chart showcasing [Kro](https://kro.run) Resource Graph Definitions (
 │               Workload Cluster (my-cluster)              │
 │                                                          │
 │  ┌──────────────────────────────────────────────────┐    │
-│  │         Sample App (podinfo)                     │    │
+│  │       Sample App (guestbook)                     │    │
 │  └──────────────────────────────────────────────────┘    │
 └──────────────────────────────────────────────────────────┘
 ```
@@ -69,7 +69,13 @@ ArgoCD is also available:
 kubectl port-forward svc/argocd-server -n argocd 8080:443
 ```
 
-Open https://localhost:8080 — **Username:** `admin`, **Password:** `make argocd-password`
+Open https://localhost:8080 — **Username:** `admin`, **Password:**
+
+```bash
+kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d
+```
+
+> **Note:** This demo catalog exposes credentials in resource status fields for convenience. This is intended for **local development and demonstration only** — do not use this pattern in production.
 
 ## Using the UI
 
